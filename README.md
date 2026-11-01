@@ -13,7 +13,7 @@ Teses e Dissertações da CAPES**, já tratados no projeto
 - [X] Estrutura do repositório
 - [X] Índice de busca semântica
 - [X] Busca híbrida (semântica + BM25) e avaliação da recuperação
-- [ ] Geração de respostas com citações verificadas
+- [X] Geração de respostas com citações verificadas
 - [ ] Avaliação das respostas
 - [ ] App de perguntas e respostas
 
@@ -52,7 +52,7 @@ python src/indice.py --testar "redes neurais para diagnóstico de câncer"
 ### 3. Buscar
 
 ```bash
-python src/busca.py "redes neurais para diagnóstico de câncer"               
+python src/busca.py "redes neurais para diagnóstico de câncer"                 # híbrida
 python src/busca.py "redes neurais para diagnóstico de câncer" --modo bm25
 python src/busca.py "redes neurais para diagnóstico de câncer" --modo semantica
 ```
@@ -60,10 +60,18 @@ python src/busca.py "redes neurais para diagnóstico de câncer" --modo semantic
 ### 4. Avaliar a busca
 
 ```bash
-python src/gerar_perguntas.py   
+python src/gerar_perguntas.py   # 60 perguntas de teste, com o Gemini (6 chamadas)
 ```
 
 Depois rode o notebook [`notebooks/01_avaliacao_busca.ipynb`](notebooks/01_avaliacao_busca.ipynb).
+
+### 5. Perguntar
+
+```bash
+python src/responder.py "Que pesquisas usam aprendizado de máquina para prever evasão escolar?"
+```
+
+Cada pergunta usa 1 chamada ao Gemini. As respostas ficam salvas em `data/respostas.jsonl`.
 
 ## Como funciona
 
@@ -114,6 +122,26 @@ câncer":
 |---|---|
 | Semântica | Só trabalhos sobre redes neurais em geral; nenhum sobre câncer |
 | Híbrida | Os 5 sobre câncer: carcinoma de mama, tumores orais, segmentação de núcleos celulares, subclasses de câncer e pólipos |
+
+### Geração de respostas com citações
+
+[`src/responder.py`](src/responder.py)
+
+Para cada pergunta, o sistema busca os 5 resumos mais relevantes (com o BM25, a melhor busca na
+avaliação), numera cada um de [1] a [5] e os envia ao Gemini com instruções:
+
+- responder **só com base nos documentos**, sem conhecimento próprio e sem inventar trabalhos;
+- indicar, depois de cada afirmação, o **número do documento** de onde ela veio;
+- se nenhum documento ajuda, **dizer que não sabe** em vez de improvisar.
+
+A resposta volta em JSON validado por um esquema (Pydantic) com três campos: `suficiente` (se os
+documentos permitem responder), `resposta` e `citacoes`. O campo `suficiente` vem primeiro de
+propósito: o modelo decide se há base para responder antes de escrever a resposta.
+
+Depois, **as citações são conferidas no código**. O LLM pode citar um [7] quando recebeu só 5
+documentos, ou escrever uma resposta sem nenhuma citação. As citações inválidas são retiradas do
+texto e registradas, e as respostas sem citação são marcadas. Toda resposta fica salva em
+`data/respostas.jsonl`, com os documentos usados, para a avaliação.
 
 ### Perguntas de teste
 
@@ -166,7 +194,7 @@ em que a híbrida se saiu melhor, era um caso só; com 60 perguntas, o quadro é
 
 A busca semântica foi mal por causa do modelo de embeddings, reaproveitado do projeto de evolução
 temática. Lá ele servia para agrupar resumos parecidos entre si. Aqui a tarefa é outra: ligar uma
-pergunta curta a um resumo longo. Além disso, ele lê só as primeiras 100 palavras do resumo, e o
+pergunta curta a um resumo longo. Além disso, ele lê só as primeiras ~100 palavras do resumo, e o
 título não entra no vetor.
 
 **Limitações:** cada pergunta tem um único trabalho certo, mas outros trabalhos também podem
