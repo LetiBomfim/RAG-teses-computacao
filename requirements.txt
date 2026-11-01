@@ -2,6 +2,11 @@ pandas>=2.2
 numpy>=1.26
 tqdm>=4.66
 jupyter>=1.1
+matplotlib>=3.9
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 sentence-transformers>=3.0
+rank-bm25>=0.2
+google-genai>=1.0
+python-dotenv>=1.0
+pydantic>=2.7
