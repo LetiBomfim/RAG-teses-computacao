@@ -9,3 +9,6 @@ __pycache__/
 # Editores e logs
 *.swp
 *.log
+
+# Embeddings originais (vêm do outro projeto; o índice reduzido é versionado)
+data/embeddings.npz
