@@ -1,0 +1,11 @@
+# Ambiente e segredos
+.venv/
+.env
+
+# Python e Jupyter
+__pycache__/
+.ipynb_checkpoints/
+
+# Editores e logs
+*.swp
+*.log
