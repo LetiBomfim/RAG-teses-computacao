@@ -12,9 +12,10 @@ sys.path.append(str(Path(__file__).resolve().parent))
 from indice import BASE, INDICE, MODELO, limpar  # noqa: E402
 
 MODOS = ("semantica", "bm25", "hibrida")
-RRF_K = 60 
-CANDIDATOS = 100  
+RRF_K = 60  # valor padrão da literatura; diminui o peso da diferença entre as primeiras posições
+CANDIDATOS = 100  # quantos resultados de cada busca entram na fusão
 
+# Palavras muito comuns, que não ajudam a distinguir um resumo de outro
 STOPWORDS = set("""
 a ao aos as com como da das de do dos e em entre era essa esse esta este eu foi ha isso isto
 ja mais mas mesmo muito na nao nas no nos o os ou para pela pelas pelo pelos por qual quais
@@ -46,15 +47,24 @@ class Buscador:
         colunas = ["ano", "grau", "regiao", "ies_sigla", "programa", "titulo", "palavras_chave", "resumo"]
         base = pd.read_csv(BASE, usecols=colunas)
         self.documentos = base.loc[self.ids].reset_index(names="id")
+
+        # No BM25 o título e as palavras-chave entram junto com o resumo: é neles que costuma
+        # estar o domínio do trabalho ("... para detecção de câncer de mama")
         textos = (self.documentos["titulo"].fillna("") + " " +
                   self.documentos["palavras_chave"].fillna("") + " " +
                   self.documentos["resumo"].fillna(""))
         self.bm25 = BM25Okapi([tokenizar(t) for t in textos])
 
-        if modelo is None:
+        self._modelo = modelo
+
+    @property
+    def modelo(self):
+        # O modelo só é carregado na primeira busca semântica. Assim, quem usa só o BM25 (como o
+        # app publicado) não precisa instalar o torch nem esperar o modelo carregar.
+        if self._modelo is None:
             from sentence_transformers import SentenceTransformer
-            modelo = SentenceTransformer(MODELO)
-        self.modelo = modelo
+            self._modelo = SentenceTransformer(MODELO)
+        return self._modelo
 
     def _semantica(self, pergunta: str) -> np.ndarray:
         vetor = self.modelo.encode(limpar(pergunta), normalize_embeddings=True)
