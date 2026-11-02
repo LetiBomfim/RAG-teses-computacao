@@ -15,7 +15,7 @@ Teses e Dissertações da CAPES**, já tratados no projeto
 - [X] Busca híbrida (semântica + BM25) e avaliação da recuperação
 - [X] Geração de respostas com citações verificadas
 - [ ] Avaliação das respostas
-- [ ] App de perguntas e respostas
+- [X] App de perguntas e respostas
 
 ## Como rodar
 
@@ -60,7 +60,7 @@ python src/busca.py "redes neurais para diagnóstico de câncer" --modo semantic
 ### 4. Avaliar a busca
 
 ```bash
-python src/gerar_perguntas.py   # 60 perguntas de teste, com o Gemini (6 chamadas)
+python src/gerar_perguntas.py   
 ```
 
 Depois rode o notebook [`notebooks/01_avaliacao_busca.ipynb`](notebooks/01_avaliacao_busca.ipynb).
@@ -72,6 +72,13 @@ python src/responder.py "Que pesquisas usam aprendizado de máquina para prever 
 ```
 
 Cada pergunta usa 1 chamada ao Gemini. As respostas ficam salvas em `data/respostas.jsonl`.
+
+### 6. Abrir o app
+
+```bash
+pip install -r app/requirements.txt
+streamlit run app/app.py
+```
 
 ## Como funciona
 
@@ -143,6 +150,23 @@ documentos, ou escrever uma resposta sem nenhuma citação. As citações invál
 texto e registradas, e as respostas sem citação são marcadas. Toda resposta fica salva em
 `data/respostas.jsonl`, com os documentos usados, para a avaliação.
 
+### App
+
+[`app/app.py`](app/app.py)
+
+Um app em Streamlit: a pessoa escreve a pergunta (ou clica num exemplo), lê a resposta com as
+citações e abre o resumo de cada trabalho encontrado, com 📌 nos que foram citados. Algumas
+decisões para ele funcionar no plano gratuito, tanto do Streamlit Cloud quanto do Gemini:
+
+- **Sem o modelo de embeddings:** o app usa o BM25, a melhor busca na avaliação. O `Buscador` só
+  carrega o modelo na primeira busca semântica, então o app não precisa instalar o `torch`,
+  pesado demais para o servidor gratuito. Por isso o app tem um `requirements.txt` próprio, mais leve.
+- **Índice carregado uma vez** (`st.cache_resource`) e compartilhado por todos os visitantes.
+- **Respostas em cache:** a mesma pergunta feita duas vezes não gasta outra chamada.
+- **Limite de 5 perguntas por visita**, para um visitante não esgotar a cota do dia.
+- **Se o Gemini falhar** (cota esgotada, servidor ocupado), o app tenta 2 vezes e depois mostra
+  os trabalhos que a busca encontrou, em vez de uma tela de erro.
+
 ### Perguntas de teste
 
 [`src/gerar_perguntas.py`](src/gerar_perguntas.py)
@@ -201,3 +225,4 @@ título não entra no vetor.
 respondê-la e aqui contam como erro. Com 60 perguntas, cada porcentagem tem margem de cerca de
 ±12 pontos. E as perguntas, escritas por um LLM a partir do resumo, às vezes repetem termos do
 próprio trabalho, o que favorece o BM25.
+
