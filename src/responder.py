@@ -13,7 +13,7 @@ from llm import criar_cliente, gerar_json, salvar_no_cache  # noqa: E402
 REGISTRO = Path("data/respostas.jsonl")  
 DOCUMENTOS_POR_RESPOSTA = 5
 MODO_PADRAO = "bm25"  
-LIMITE_RESUMO = 1200  
+LIMITE_RESUMO = 3000  # caracteres por resumo; com 1.200, a avaliação mostrou recusas por resumos cortados 
 
 
 class Resposta(BaseModel):
