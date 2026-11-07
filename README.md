@@ -14,7 +14,7 @@ Teses e Dissertações da CAPES**, já tratados no projeto
 - [X] Índice de busca semântica
 - [X] Busca híbrida (semântica + BM25) e avaliação da recuperação
 - [X] Geração de respostas com citações verificadas
-- [ ] Avaliação das respostas
+- [X] Avaliação das respostas
 - [X] App de perguntas e respostas
 
 ## Como rodar
@@ -226,3 +226,33 @@ respondê-la e aqui contam como erro. Com 60 perguntas, cada porcentagem tem mar
 ±12 pontos. E as perguntas, escritas por um LLM a partir do resumo, às vezes repetem termos do
 próprio trabalho, o que favorece o BM25.
 
+Avaliação das respostas
+
+O notebook notebooks/02_avaliacao_respostas.ipynb testa o sistema completo (busca + geração) com 20 perguntas: 15 respondíveis, sorteadas entre as perguntas de teste da busca, e 5 fora do escopo (futebol, culinária, cinema...), que nenhuma tese de Computação responde.
+
+Medida	Resultado
+Recusou as perguntas fora do escopo	5 de 5
+Respostas com citação a documento inexistente	0
+Respostas sem nenhuma citação	0
+Respondeu às perguntas respondíveis	7 de 15
+
+Por que recusou 8 perguntas que tinham resposta? Cruzando as recusas com a busca:
+
+	Recusou	Respondeu
+Trabalho certo fora dos 5 documentos	6	0
+Trabalho certo entre os 5 documentos	2	7
+Em 6 das 8 recusas, a busca não trouxe o trabalho certo. Recusar foi o comportamento correto: os documentos recebidos não respondiam à pergunta, e o sistema não inventou.
+As outras 2 vieram do corte dos resumos: o prompt levava só os primeiros 1.200 caracteres de cada um. Num dos casos, o próprio modelo explicou que o resumo "é interrompido antes de detalhar os experimentos e conclusões". O limite foi aumentado para 3.000 caracteres (LIMITE_RESUMO em src/responder.py), ainda sem nova avaliação.
+
+Fidelidade. Li as 7 respostas e conferi, frase por frase, se cada afirmação estava no resumo citado:
+
+Fiel aos resumos citados	Respostas
+Sim	4 (57%)
+Parcial (alguma afirmação não aparece no resumo ou foi exagerada)	3 (43%)
+Não	0
+
+Conclusão: o sistema é seguro, e o gargalo está na busca. Ele não inventou respostas sem base, não citou documentos inexistentes e nenhuma resposta contrariou os resumos. Mas o trabalho certo estava entre os 5 documentos em só 60% das perguntas, e quase todas as recusas vieram daí.
+
+Próximos passos: um modelo de embeddings treinado para busca (como o multilingual-e5), para a busca híbrida passar a superar o BM25; reavaliar com o limite de 3.000 caracteres; e ajustar o prompt a partir das respostas parciais.
+
+Limitações: 20 perguntas dão uma ideia do comportamento, não uma medida precisa; a conferência foi feita por uma pessoa, sem segunda leitura; e a fidelidade foi conferida contra o mesmo trecho de 1.200 caracteres que o modelo recebeu. Durante a avaliação, a API gratuita do Gemini ficou dois dias respondendo "503: modelo sobrecarregado", e as novas tentativas gastavam a cota diária. Por isso src/llm.py passou a desistir depois de 2 erros 503 seguidos e a parar na hora quando a cota do dia acaba.
